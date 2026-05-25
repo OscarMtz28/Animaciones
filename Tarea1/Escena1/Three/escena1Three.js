@@ -48,9 +48,12 @@ texturaAjedrez.wrapT = THREE.RepeatWrapping;
 texturaAjedrez.repeat.set(4, 2); // Repetir el patrón
 
 // 4. Geometrías y Materiales
+
 const matStandard = new THREE.MeshStandardMaterial({ color: 0x00ff88, roughness: 0.2, metalness: 0.8 });
 const matPhong = new THREE.MeshPhongMaterial({ color: 0x00aaff, shininess: 100 });
+
 // Nuevo material que usa nuestra textura
+
 const matTextura = new THREE.MeshStandardMaterial({ map: texturaAjedrez, roughness: 0.5 }); 
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x555555 }));
@@ -120,11 +123,10 @@ carpetaApariencia.add(parametros, 'intensidadLuz', 0, 5).name('Luz Direccional')
 function animate() {
     requestAnimationFrame(animate);
 
-    // Usamos la variable del panel de control para la rotación
     box.rotation.x += parametros.velocidadRotacion;
     box.rotation.y += parametros.velocidadRotacion;
     
-    sphere.rotation.y -= parametros.velocidadRotacion * 0.5; // La esfera también rota
+    sphere.rotation.y -= parametros.velocidadRotacion * 0.5;
     
     torus.rotation.x += parametros.velocidadRotacion * 2;
 
