@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Escena 2 - Three.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- Importamos Three.js y GLTFLoader desde CDN -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+// ─── 1. ESCENA, CÁMARA Y RENDERER ──────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x222222);
+
+const camera = new THREE.PerspectiveCamera(
+  75,                                    // campo de visión
+  window.innerWidth / window.innerHeight, // proporción
+  0.1,                                   // plano cercano
+  100                                    // plano lejano
+);
+camera.position.set(0, 2, 6);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+// ─── 2. ILUMINACIÓN ────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(5, 10, 5);
+scene.add(dirLight);
+
+const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+dirLight2.position.set(-5, 5, -5);
+scene.add(dirLight2);
+
+// ─── 3. TEXTURA CON TextureLoader ──────────────────────────
+const textureLoader = new THREE.TextureLoader();
+const textura = textureLoader.load('marble_cliff_03_diff_1k.jpg');
+
+// Objeto con textura aplicada (para demostrar que funciona)
+const geometria = new THREE.BoxGeometry(2, 2, 2);
+const material = new THREE.MeshStandardMaterial({ map: textura });
+const cubo = new THREE.Mesh(geometria, material);
+cubo.position.set(-2, 0, 0);
+scene.add(cubo);
+
+// ─── 4. MODELO GLTF CON ANIMACIÓN ──────────────────────────
+let mixer; 
+
+const gltfLoader = new GLTFLoader();
+gltfLoader.load(
+  'Stan.gltf',   
+  
+  (gltf) => {
+    gltf.scene.scale.set(0.7, 0.7, 0.7);  // escalar el modelo (ajusta el número)
+    gltf.scene.position.set(1, -1.7, 0);         // moverlo a la derecha del cubo
+    // Agregar modelo a la escena
+    scene.add(gltf.scene);
+
+    // Reproducir la primera animación del modelo
+    if (gltf.animations.length > 0) {
+      mixer = new THREE.AnimationMixer(gltf.scene);
+      const accion = mixer.clipAction(gltf.animations[0]);
+      accion.play();
+      console.log('Animaciones disponibles:', gltf.animations.map(a => a.name));
+    }
+  },
+  (progreso) => {
+    console.log('Cargando:', (progreso.loaded / progreso.total * 100).toFixed(0) + '%');
+  },
+  (error) => {
+    console.error('Error al cargar el modelo:', error);
+  }
+);
+
+// ─── 5. LOOP DE ANIMACIÓN ───────────────────────────────────
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const delta = clock.getDelta(); // segundos desde el último frame
+
+  // Actualizar el mixer para que avance la animación
+  if (mixer) mixer.update(delta);
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ─── 6. RESIZE RESPONSIVO ──────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
