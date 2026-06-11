@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js - Vertex Wobble Shader</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #030816;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(3, 8, 22, 0.85);
+            padding: 24px;
+            color: #f0f4f8;
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 100;
+            font-size: 14px;
+            min-width: 250px;
+            pointer-events: auto;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .controls h3 {
+            margin: 0 0 8px 0;
+            text-align: center;
+            color: #f59e0b; /* Amarillo/naranja */
+            font-size: 18px;
+            letter-spacing: 0.5px;
+        }
+        
+        .controls p {
+            margin: 0 0 20px 0;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .control-group {
+            margin-bottom: 18px;
+        }
+        
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        
+        .control-group select {
+            height: 35px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            background: #0b1329;
+            color: #cbd5e1;
+            padding: 5px;
+            outline: none;
+        }
+        
+        .control-group input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #1e293b;
+            outline: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f59e0b;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
+        .value-display {
+            color: #f59e0b;
+        }
+        
+        hr {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+            margin: 20px 0;
+        }
+        
+        .info {
+            font-size: 11px;
+            text-align: center;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        
+        .status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(3, 8, 22, 0.7);
+            padding: 6px 14px;
+            border-radius: 6px;
+            color: #f59e0b;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>Vertex Wobble</h3>
+        <p>Three.js custom implementation</p>
+        
+        <div class="control-group">
+            <label for="amplitude">Amplitud: <span id="amplitudeValue" class="value-display">0.15</span></label>
+            <input type="range" id="amplitude" min="0.0" max="0.4" value="0.15" step="0.01">
+        </div>
+        
+        <div class="control-group">
+            <label for="frequency">Frecuencia: <span id="frequencyValue" class="value-display">4.0</span></label>
+            <input type="range" id="frequency" min="1.0" max="10.0" value="4.0" step="0.2">
+        </div>
+        
+        <div class="control-group">
+            <label for="speed">Velocidad Onda: <span id="speedValue" class="value-display">2.5</span></label>
+            <input type="range" id="speed" min="0.5" max="6.0" value="2.5" step="0.1">
+        </div>
+        
+        <div class="control-group">
+            <label for="direction">Dirección de la Ola</label>
+            <select id="direction">
+                <option value="Y" selected>Eje Y (Vertical)</option>
+                <option value="X">Eje X (Horizontal)</option>
+                <option value="Z">Eje Z (Profundidad)</option>
+            </select>
+        </div>
+        
+        <hr>
+        <div class="info">
+            💡 El Vertex Shader modifica la posición de los vértices a lo largo de su vector normal en función del tiempo.
+        </div>
+    </div>
+    
+    <div class="status" id="status">
+        Cargando Three.js...
+    </div>
+
+    <!-- Cargar Three.js y OrbitControls desde CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

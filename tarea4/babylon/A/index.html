@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babylon.js - Blinn-Phong Shader</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            color: white;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            font-size: 14px;
+            min-width: 220px;
+            pointer-events: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .controls h3 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #ff8844;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #ddd;
+        }
+        
+        .control-group input {
+            width: 100%;
+            cursor: pointer;
+        }
+        
+        .control-group input[type="color"] {
+            height: 35px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #222;
+        }
+        
+        .value-display {
+            display: inline-block;
+            margin-left: 10px;
+            color: #ff8844;
+        }
+        
+        hr {
+            border-color: #444;
+            margin: 15px 0;
+        }
+        
+        .info {
+            font-size: 11px;
+            text-align: center;
+            color: #888;
+            margin-top: 15px;
+        }
+        
+        .status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 12px;
+            border-radius: 5px;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>Blinn-Phong Shader (Babylon.js)</h3>
+        <div class="control-group">
+            <label>Color Difuso:</label>
+            <input type="color" id="diffuseColor" value="#ff8844">
+        </div>
+        <div class="control-group">
+            <label>Color Especular:</label>
+            <input type="color" id="specularColor" value="#ffffff">
+        </div>
+        <div class="control-group">
+            <label>Shininess: <span id="shininessValue" class="value-display">32</span></label>
+            <input type="range" id="shininess" min="1" max="200" value="32" step="1">
+        </div>
+        <hr>
+        <div class="info">
+            💡 Luz direccional moviéndose<br>
+            🖱️ Arrastra para rotar la cámara
+        </div>
+    </div>
+    <div class="status" id="status">
+        Inicializando...
+    </div>
+
+    <canvas id="renderCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
+    
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

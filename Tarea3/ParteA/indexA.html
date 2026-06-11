@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL2 Puro - Brazo Robótico (T2)</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #111; 
+            color: white; 
+            font-family: sans-serif; 
+        }
+        canvas { 
+            display: block; 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        #ui { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            background: rgba(0,0,0,0.8); 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #333;
+        }
+        h3 { margin: 0 0 5px 0; color: #00ffcc; }
+        p { margin: 0; font-size: 14px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h3>T2: Brazo Robótico Articulado</h3>
+        <p>Implementación WebGL2 Puro (GLSL)</p>
+    </div>
+    
+    <canvas id="glcanvas"></canvas>
+    
+    <script src="mainA.js"></script>
+</body>
+</html>

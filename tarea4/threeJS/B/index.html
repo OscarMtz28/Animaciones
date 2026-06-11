@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js - Toon / Cel-shading Shader</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #030816;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(3, 8, 22, 0.85);
+            padding: 24px;
+            color: #f0f4f8;
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 100;
+            font-size: 14px;
+            min-width: 250px;
+            pointer-events: auto;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .controls h3 {
+            margin: 0 0 8px 0;
+            text-align: center;
+            color: #10b981; /* Verde esmeralda para el Toon shader */
+            font-size: 18px;
+            letter-spacing: 0.5px;
+        }
+        
+        .controls p {
+            margin: 0 0 20px 0;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .control-group {
+            margin-bottom: 18px;
+        }
+        
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+        
+        .control-group input {
+            width: 100%;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        
+        .control-group input[type="color"] {
+            height: 38px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            background: #0b1329;
+            padding: 2px;
+        }
+        
+        .control-group input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #1e293b;
+            outline: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
+        .value-display {
+            color: #10b981;
+        }
+        
+        hr {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+            margin: 20px 0;
+        }
+        
+        .info {
+            font-size: 11px;
+            text-align: center;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        
+        .status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(3, 8, 22, 0.7);
+            padding: 6px 14px;
+            border-radius: 6px;
+            color: #10b981;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>Toon / Cel-shading</h3>
+        <p>Three.js custom implementation</p>
+        
+        <div class="control-group">
+            <label for="baseColor">Color Base</label>
+            <input type="color" id="baseColor" value="#ff5555">
+        </div>
+        
+        <div class="control-group">
+            <label for="outlineColor">Color Contorno (Outline)</label>
+            <input type="color" id="outlineColor" value="#000000">
+        </div>
+        
+        <div class="control-group">
+            <label for="outlineThickness">Grosor Contorno: <span id="outlineThicknessValue" class="value-display">0.3</span></label>
+            <input type="range" id="outlineThickness" min="0.0" max="0.8" value="0.30" step="0.05">
+        </div>
+        
+        <div class="control-group">
+            <label for="bands">Niveles (Bandas): <span id="bandsValue" class="value-display">4</span></label>
+            <input type="range" id="bands" min="3" max="8" value="4" step="1">
+        </div>
+        
+        <hr>
+        <div class="info">
+            💡 Iluminación cuantizada y contorno silueta<br>
+            🖱️ Arrastra para rotar la cámara (OrbitControls)
+        </div>
+    </div>
+    
+    <div class="status" id="status">
+        Cargando Three.js...
+    </div>
+
+    <!-- Cargar Three.js y OrbitControls desde CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

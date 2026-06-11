@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js - Normal Map Shader Comparison</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #030816;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(3, 8, 22, 0.85);
+            padding: 24px;
+            color: #f0f4f8;
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 100;
+            font-size: 14px;
+            min-width: 250px;
+            pointer-events: auto;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .controls h3 {
+            margin: 0 0 8px 0;
+            text-align: center;
+            color: #3b82f6;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+        }
+        
+        .controls p {
+            margin: 0 0 20px 0;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .control-group {
+            margin-bottom: 18px;
+        }
+        
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+        
+        .control-group input {
+            width: 100%;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        
+        .control-group input[type="color"] {
+            height: 38px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            background: #0b1329;
+            padding: 2px;
+        }
+        
+        .control-group input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #1e293b;
+            outline: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
+        .value-display {
+            color: #3b82f6;
+        }
+        
+        hr {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+            margin: 20px 0;
+        }
+        
+        .comparison-labels {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 120px;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        .label-box {
+            background: rgba(3, 8, 22, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #f0f4f8;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        .label-box span {
+            display: block;
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 2px;
+            font-weight: normal;
+        }
+        
+        .info {
+            font-size: 11px;
+            text-align: center;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        
+        .status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(3, 8, 22, 0.7);
+            padding: 6px 14px;
+            border-radius: 6px;
+            color: #3b82f6;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>Normal Map (Bump)</h3>
+        <p>Three.js custom implementation</p>
+        
+        <div class="control-group">
+            <label for="diffuseColor">Color de Luz</label>
+            <input type="color" id="diffuseColor" value="#5588ff">
+        </div>
+        
+        <div class="control-group">
+            <label for="shininess">Shininess: <span id="shininessValue" class="value-display">40</span></label>
+            <input type="range" id="shininess" min="5" max="150" value="40" step="5">
+        </div>
+        
+        <div class="control-group">
+            <label for="mapScale">Frecuencia Textura: <span id="mapScaleValue" class="value-display">2.0</span></label>
+            <input type="range" id="mapScale" min="0.5" max="5.0" value="2.0" step="0.1">
+        </div>
+        
+        <hr>
+        <div class="info">
+            💡 La textura de normales se genera de forma procedural matemáticamente.<br>
+            La geometría de ambas esferas es exactamente idéntica.
+        </div>
+    </div>
+    
+    <div class="comparison-labels">
+        <div class="label-box">
+            SIN MAPA DE NORMALES
+            <span>Solo geometría lisa</span>
+        </div>
+        <div class="label-box">
+            CON MAPA DE NORMALES
+            <span>Texturizado 3D simulado</span>
+        </div>
+    </div>
+    
+    <div class="status" id="status">
+        Cargando Three.js...
+    </div>
+
+    <!-- Cargar Three.js y OrbitControls desde CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
