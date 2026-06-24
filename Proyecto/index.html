@@ -159,7 +159,7 @@
 
     /* ── Configuración global ─────────────────────────────── */
     const CFG = {
-      FISH_COUNT:    120,     // peces del banco
+      FISH_COUNT:    150,     // peces del banco
       LEADER_COUNT:    3,     // peces líderes (PBR)
       BOUNDS:         90,     // caja de confinamiento
       SPEED_BASE:     0.18,
@@ -249,100 +249,226 @@
     shadowGen.blurKernel = 16;
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     * 3. MATERIALES
-     *    Material A — PBRMaterial   (peces líderes, metálico)
-     *    Material B — StandardMaterial (banco de peces, difuso)
+     * 3. SHADERS Y MATERIAL DE LOS PECES (T4)
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-    // Material A — PBRMaterial (equivalente a MeshStandardMaterial)
-    const matLeader = new BABYLON.PBRMaterial('matLeader', scene);
-    matLeader.albedoColor       = new BABYLON.Color3(1.0, 0.55, 0.05);   // naranja
-    matLeader.metallic          = 0.6;
-    matLeader.roughness         = 0.25;
-    matLeader.emissiveColor     = new BABYLON.Color3(0.15, 0.06, 0.0);
-    matLeader.reflectivityColor = new BABYLON.Color3(0.9, 0.7, 0.3);
+    // Registro de los shaders avanzados de deformación (wobble) y sombreado toon
+    BABYLON.Effect.ShadersStore["fishVertexShader"] = `
+      precision highp float;
 
-    // Material B — StandardMaterial (equivalente a MeshPhongMaterial)
-    const matFish = new BABYLON.StandardMaterial('matFish', scene);
-    matFish.diffuseColor  = new BABYLON.Color3(0.18, 0.65, 0.85);   // azul cielo
-    matFish.specularColor = new BABYLON.Color3(0.8, 0.9, 1.0);
-    matFish.specularPower = 64;
-    matFish.emissiveColor = new BABYLON.Color3(0.02, 0.06, 0.1);
+      // Attributes
+      attribute vec3 position;
+      attribute vec3 normal;
+      attribute vec2 uv;
 
-    // Material aleta (acento)
-    const matFin = new BABYLON.StandardMaterial('matFin', scene);
-    matFin.diffuseColor  = new BABYLON.Color3(0.05, 0.35, 0.65);
-    matFin.specularColor = new BABYLON.Color3(0.6, 0.8, 1.0);
-    matFin.specularPower = 48;
-    matFin.alpha         = 0.85;
+      #ifdef INSTANCES
+      attribute vec4 world0;
+      attribute vec4 world1;
+      attribute vec4 world2;
+      attribute vec4 world3;
+      attribute float timeOffset;
+      attribute vec3 customColor;
+      #else
+      uniform mat4 world;
+      uniform float timeOffset;
+      uniform vec3 customColor;
+      #endif
 
-    // Material aleta líder
-    const matFinLeader = new BABYLON.PBRMaterial('matFinLeader', scene);
-    matFinLeader.albedoColor = new BABYLON.Color3(0.9, 0.3, 0.05);
-    matFinLeader.metallic    = 0.4;
-    matFinLeader.roughness   = 0.4;
-    matFinLeader.alpha       = 0.9;
+      // Uniforms
+      uniform mat4 viewProjection;
+      uniform float time;
+
+      // Varyings
+      varying vec3 vNormal;
+      varying vec3 vPositionW;
+      varying vec3 vLocalPos;
+      varying vec3 vColor;
+
+      void main() {
+          #ifdef INSTANCES
+          mat4 finalWorld = mat4(world0, world1, world2, world3);
+          float tOffset = timeOffset;
+          vec3 color = customColor;
+          #else
+          mat4 finalWorld = world;
+          float tOffset = timeOffset;
+          vec3 color = customColor;
+          #endif
+
+          // wobble (deformación de vértices ondulante en el eje Z local)
+          float freq = 5.0;
+          float amp = 0.28;
+          float t = time * 12.0 + tOffset;
+          
+          // La cabeza (x > 1.0) se mantiene estable, mientras que la cola (x < -1.0) ondula
+          float tailFactor = clamp((2.0 - position.x) / 5.0, 0.0, 1.0);
+          
+          vec3 deformedPosition = position;
+          deformedPosition.z += sin(position.x * freq - t) * amp * tailFactor;
+
+          vec4 worldPos = finalWorld * vec4(deformedPosition, 1.0);
+          gl_Position = viewProjection * worldPos;
+
+          vPositionW = vec3(worldPos);
+          vLocalPos = position;
+          vColor = color;
+          
+          // Recalculado aproximado de normales basándonos en la deformación
+          vec3 deformedNormal = normal;
+          float slope = cos(position.x * freq - t) * amp * freq * tailFactor;
+          deformedNormal.x -= slope * normal.z;
+          deformedNormal.z += slope * normal.x;
+          deformedNormal = normalize(deformedNormal);
+
+          vNormal = normalize(vec3(finalWorld * vec4(deformedNormal, 0.0)));
+      }
+    `;
+
+    BABYLON.Effect.ShadersStore["fishFragmentShader"] = `
+      precision highp float;
+
+      // Uniforms
+      uniform vec3 lightDirection;
+      uniform vec3 lightColor;
+      uniform vec3 cameraPosition;
+
+      // Varyings
+      varying vec3 vNormal;
+      varying vec3 vPositionW;
+      varying vec3 vLocalPos;
+      varying vec3 vColor;
+
+      void main() {
+          // 1. Coloreado basado en posición local (cuerpo vs cola/aleta)
+          vec3 baseColor = vColor;
+          bool isLeader = (vColor.r > 0.8 && vColor.g > 0.4);
+          
+          if (vLocalPos.x < -1.5) {
+              // Cola
+              baseColor = isLeader ? vec3(0.9, 0.2, 0.0) : vec3(0.05, 0.35, 0.65);
+          } else if (vLocalPos.y > 0.8) {
+              // Aleta dorsal
+              baseColor = isLeader ? vec3(0.9, 0.3, 0.05) : vec3(0.05, 0.35, 0.65);
+          }
+
+          // 2. Iluminación difusa
+          vec3 normal = normalize(vNormal);
+          vec3 lightDir = normalize(-lightDirection);
+          float ndl = dot(normal, lightDir);
+          float diffuse = max(0.0, ndl);
+          
+          // 3. Cel-shading (Toon / 4 niveles de iluminación discretos)
+          float intensity;
+          if (diffuse > 0.8) {
+              intensity = 1.0;
+          } else if (diffuse > 0.5) {
+              intensity = 0.7;
+          } else if (diffuse > 0.2) {
+              intensity = 0.4;
+          } else {
+              intensity = 0.15;
+          }
+          
+          // 4. Especular Toon
+          vec3 viewDir = normalize(cameraPosition - vPositionW);
+          vec3 halfDir = normalize(lightDir + viewDir);
+          float ndh = max(0.0, dot(normal, halfDir));
+          float specular = pow(ndh, 48.0);
+          float specIntensity = specular > 0.6 ? 0.5 : 0.0;
+          
+          // 5. Rim / Outline (Contorno oscuro para Toon shading)
+          float rim = dot(normal, viewDir);
+          float outline = mix(0.35, 1.0, smoothstep(0.2, 0.3, rim));
+          
+          // Combinación con luz de ambiente marina suave
+          vec3 ambientColor = vec3(0.02, 0.08, 0.18);
+          vec3 finalColor = baseColor * (intensity * lightColor + ambientColor) + vec3(1.0) * specIntensity * lightColor;
+          
+          gl_FragColor = vec4(finalColor * outline, 1.0);
+      }
+    `;
+
+    const fishShaderMaterial = new BABYLON.ShaderMaterial("fishShader", scene, {
+      vertex: "fish",
+      fragment: "fish",
+    }, {
+      attributes: ["position", "normal", "uv", "world0", "world1", "world2", "world3", "timeOffset", "customColor"],
+      uniforms: ["world", "viewProjection", "time", "lightDirection", "lightColor", "cameraPosition"],
+    });
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     * 4. GEOMETRÍA DE PEZ  (cuerpo + aleta dorsal + cola)
-     *    Fabricamos cada pez con primitivas de Babylon.
+     * 4. GEOMETRÍA BASE DEL PEZ (Malla fusionada + Instanciación T5)
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
+    const bodyTemp = BABYLON.MeshBuilder.CreateSphere('bodyTemp', { diameter: 2.2, segments: 8 }, scene);
+    bodyTemp.scaling = new BABYLON.Vector3(1.9, 0.85, 0.95);
+
+    const tailTemp = BABYLON.MeshBuilder.CreateCylinder('tailTemp', {
+      height: 1.4,
+      diameterTop: 0.0,
+      diameterBottom: 1.3,
+      tessellation: 6,
+    }, scene);
+    tailTemp.position = new BABYLON.Vector3(-2.3, 0, 0);
+    tailTemp.rotation.z = Math.PI / 2;
+    tailTemp.scaling.y = 0.3;
+
+    const finTemp = BABYLON.MeshBuilder.CreateCylinder('finTemp', {
+      height: 1.1,
+      diameterTop: 0.0,
+      diameterBottom: 0.9,
+      tessellation: 4,
+    }, scene);
+    finTemp.position = new BABYLON.Vector3(0.1, 1.1, 0);
+    finTemp.scaling.z = 0.25;
+
+    // Fusión de las partes en una única malla base de alto rendimiento
+    const baseFishMesh = BABYLON.Mesh.MergeMeshes([bodyTemp, tailTemp, finTemp], true, true, undefined, false, true);
+    baseFishMesh.material = fishShaderMaterial;
+    baseFishMesh.isVisible = false;
+
+    // Registrar buffers instanciados para offsets de animación y colores personalizados
+    baseFishMesh.registerInstancedBuffer("timeOffset", 1);
+    baseFishMesh.registerInstancedBuffer("customColor", 3);
+
+    // Valores por defecto
+    baseFishMesh.instancedBuffers.timeOffset = 0.0;
+    baseFishMesh.instancedBuffers.customColor = new BABYLON.Vector3(0.18, 0.65, 0.85);
+
     /**
-     * Crea un pez compuesto (cuerpo esfera + aleta dorsal + cola)
+     * Crea un InstancedMesh del pez con offset y escala individuales (T5)
      * @param {string} name
      * @param {boolean} isLeader
-     * @returns {BABYLON.Mesh} raíz (pivot)
+     * @returns {BABYLON.InstancedMesh}
      */
-    function createFish(name, isLeader) {
-      const bodyMat = isLeader ? matLeader : matFish;
-      const finMat  = isLeader ? matFinLeader : matFin;
+    function createFish(name, isLeader, groupId = -1) {
+      const instance = baseFishMesh.createInstance(name);
+      
+      // Asegurar que la rotación local por componentes funcione correctamente
+      instance.rotationQuaternion = null;
+      
+      // Asignar offset aleatorio para el nado desincronizado (T5)
+      instance.instancedBuffers.timeOffset = Math.random() * 100.0;
+      
+      if (isLeader) {
+        instance.instancedBuffers.customColor = new BABYLON.Vector3(1.0, 0.55, 0.05); // Naranja
+        instance.scaling = new BABYLON.Vector3(1.9, 1.9, 1.9); // Líder más grande
+      } else {
+        // Color by group to match Three.js version
+        if (groupId === 1) {
+          instance.instancedBuffers.customColor = new BABYLON.Vector3(0.1, 0.82, 0.6); // Teal Green
+        } else if (groupId === 2) {
+          instance.instancedBuffers.customColor = new BABYLON.Vector3(0.49, 0.1, 0.82); // Purple-Indigo
+        } else {
+          instance.instancedBuffers.customColor = new BABYLON.Vector3(0.18, 0.65, 0.85); // Sky Blue
+        }
+        instance.scaling = new BABYLON.Vector3(1.0, 1.0, 1.0);
+      }
 
-      const scale = isLeader ? 1.9 : 1.0;
-
-      // Pivot root (invisible)
-      const root = new BABYLON.Mesh(name + '_root', scene);
-
-      // Cuerpo — elipsoide via esfera escalada
-      const body = BABYLON.MeshBuilder.CreateSphere(name + '_body', {
-        diameter: 2.2 * scale,
-        segments: 8,
-      }, scene);
-      body.scaling    = new BABYLON.Vector3(1.9, 0.85, 0.95);
-      body.material   = bodyMat;
-      body.parent     = root;
-      body.receiveShadows = true;
-      shadowGen.addShadowCaster(body);
-
-      // Cola — cono aplanado
-      const tail = BABYLON.MeshBuilder.CreateCylinder(name + '_tail', {
-        height: 1.4 * scale,
-        diameterTop: 0.0,
-        diameterBottom: 1.3 * scale,
-        tessellation: 6,
-      }, scene);
-      tail.position   = new BABYLON.Vector3(-2.3 * scale, 0, 0);
-      tail.rotation.z = Math.PI / 2;
-      tail.scaling.y  = 0.3;
-      tail.material   = finMat;
-      tail.parent     = root;
-      tail.receiveShadows = true;
-      shadowGen.addShadowCaster(tail);
-
-      // Aleta dorsal — cono pequeño
-      const fin = BABYLON.MeshBuilder.CreateCylinder(name + '_fin', {
-        height: 1.1 * scale,
-        diameterTop: 0.0,
-        diameterBottom: 0.9 * scale,
-        tessellation: 4,
-      }, scene);
-      fin.position  = new BABYLON.Vector3(0.1 * scale, 1.1 * scale, 0);
-      fin.scaling.z = 0.25;
-      fin.material  = finMat;
-      fin.parent    = root;
-      shadowGen.addShadowCaster(fin);
-
-      return root;
+      // Habilitar proyección de sombras para la instancia
+      shadowGen.addShadowCaster(instance);
+      
+      return instance;
     }
 
     /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -402,11 +528,13 @@
 
     // Clase boid
     class Boid {
-      constructor(mesh, isLeader) {
-        this.mesh      = mesh;
-        this.isLeader  = isLeader;
-        this.pos       = randInBounds();
-        this.vel       = new BABYLON.Vector3(
+      constructor(mesh, isLeader, assignedLeader = null, groupId = -1) {
+        this.mesh           = mesh;
+        this.isLeader       = isLeader;
+        this.assignedLeader = assignedLeader;
+        this.groupId        = groupId;
+        this.pos            = randInBounds();
+        this.vel            = new BABYLON.Vector3(
           (Math.random() - 0.5),
           (Math.random() - 0.5) * 0.3,
           (Math.random() - 0.5),
@@ -441,13 +569,9 @@
         this.pos.addInPlace(this.vel);
         this.acc.scaleInPlace(0);   // reset
 
-        // Animación cola
-        this._tailTime += dt * 4.5;
-
-        // Actualizar mesh
+        // Actualizar mesh (la animación de la cola ahora la hace el shader wobble)
         this.mesh.position.copyFrom(this.pos);
         this._orientMesh();
-        this._animateTail();
       }
 
       _orientMesh() {
@@ -472,9 +596,17 @@
         let count = 0;
         for (const b of boids) {
           if (b === this) continue;
+          
+          let sepRadius = CFG.SEP_RADIUS;
+          let weight = 1.0;
+          if (this.isLeader && b.isLeader) {
+            sepRadius = 40.0;
+            weight = 8.0;
+          }
+          
           const d = BABYLON.Vector3.Distance(this.pos, b.pos);
-          if (d < CFG.SEP_RADIUS && d > 0) {
-            const diff = this.pos.subtract(b.pos).normalize().scale(1 / d);
+          if (d < sepRadius && d > 0) {
+            const diff = this.pos.subtract(b.pos).normalize().scale(weight / d);
             steer.addInPlace(diff);
             count++;
           }
@@ -489,6 +621,8 @@
         let count = 0;
         for (const b of boids) {
           if (b === this) continue;
+          if (this.isLeader && b.isLeader) continue;
+          if (this.groupId !== b.groupId) continue;
           if (BABYLON.Vector3.Distance(this.pos, b.pos) < CFG.ALN_RADIUS) {
             avg.addInPlace(b.vel);
             count++;
@@ -505,6 +639,8 @@
         let count = 0;
         for (const b of boids) {
           if (b === this) continue;
+          if (this.isLeader && b.isLeader) continue;
+          if (this.groupId !== b.groupId) continue;
           if (BABYLON.Vector3.Distance(this.pos, b.pos) < CFG.COH_RADIUS) {
             center.addInPlace(b.pos);
             count++;
@@ -515,14 +651,10 @@
         return center.subtract(this.pos).scale(0.002);
       }
 
-      // ── Buscar líderes
+      // ── Buscar líder asignado
       _seekGroup(leaders) {
-        const nearest = leaders.reduce((best, l) => {
-          const d = BABYLON.Vector3.Distance(this.pos, l.pos);
-          return d < best.d ? { boid: l, d } : best;
-        }, { boid: null, d: Infinity });
-        if (!nearest.boid) return BABYLON.Vector3.Zero();
-        return nearest.boid.pos.subtract(this.pos).normalize().scale(0.003);
+        if (!this.assignedLeader) return BABYLON.Vector3.Zero();
+        return this.assignedLeader.pos.subtract(this.pos).normalize().scale(0.003);
       }
 
       // ── Contención en caja con fuerza de rebote suave
@@ -546,16 +678,18 @@
     const allBoids = [];
 
     for (let i = 0; i < CFG.LEADER_COUNT; i++) {
-      const mesh = createFish(`leader_${i}`, true);
-      const boid = new Boid(mesh, true);
+      const mesh = createFish(`leader_${i}`, true, i);
+      const boid = new Boid(mesh, true, null, i);
       leaders.push(boid);
       allBoids.push(boid);
     }
 
     /* ── Crear banco de peces ─────────────────────────────── */
     for (let i = 0; i < CFG.FISH_COUNT; i++) {
-      const mesh = createFish(`fish_${i}`, false);
-      const boid = new Boid(mesh, false);
+      const groupId = i % CFG.LEADER_COUNT;
+      const assignedLeader = leaders[groupId];
+      const mesh = createFish(`fish_${i}`, false, groupId);
+      const boid = new Boid(mesh, false, assignedLeader, groupId);
       allBoids.push(boid);
     }
 
@@ -579,6 +713,12 @@
       /* Delta time normalizado */
       const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
       elapsed += dt;
+
+      /* Actualizar uniformes del shader de peces */
+      fishShaderMaterial.setFloat("time", elapsed);
+      fishShaderMaterial.setVector3("lightDirection", dirLight.direction);
+      fishShaderMaterial.setColor3("lightColor", dirLight.diffuse);
+      fishShaderMaterial.setVector3("cameraPosition", camera.position);
 
       /* FPS counter */
       frameCount++;
