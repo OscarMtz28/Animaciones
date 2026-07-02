@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarea 6: Algoritmo Boids & Spatial Hashing</title>
+  <meta name="description" content="Simulación en tiempo real del algoritmo de enjambre (Boids) con las tres reglas de Craig Reynolds y optimización mediante Spatial Hashing.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header>
+    <div class="header-title">
+      <h1>Boids Flocking Simulation</h1>
+      <div class="header-subtitle">Tarea 6 • Computación Gráfica e Interactiva</div>
+    </div>
+    <div class="tabs-navigation">
+      <button class="tab-btn active" data-tab="standard" id="nav-btn-std">
+        Fuerza Bruta <code class="tab-badge">O(N²)</code>
+      </button>
+      <button class="tab-btn" data-tab="optimized" id="nav-btn-opt">
+        Spatial Hashing <code class="tab-badge">O(N)</code>
+      </button>
+      <button class="tab-btn" data-tab="comparison" id="nav-btn-comp">
+        Comparativa <code class="tab-badge">Métricas</code>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-container">
+
+    <!-- TAB 1: STANDARD SIMULATION -->
+    <div class="tab-content active" id="panel-standard">
+      <div class="viewport-panel">
+        <div class="viewport-header">
+          <div class="viewport-title">
+            <span class="pulse-dot" style="background-color: var(--accent-pink); box-shadow: 0 0 8px var(--accent-pink-glow);"></span>
+            Simulación Estándar O(N²)
+          </div>
+          <p class="info-banner-text">Haz click en la simulación para añadir agentes.</p>
+        </div>
+        <div class="canvas-container">
+          <canvas id="sim-std-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="sidebar-panel">
+        <div class="sidebar-section">
+          <div class="section-title">Rendimiento O(N²)</div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">FPS</span>
+              <span class="metric-value pink" id="std-fps-val">60</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Cálculo Física</span>
+              <span class="metric-value" id="std-time-val">0.0 ms</span>
+            </div>
+            <div class="metric-card" style="grid-column: span 2;">
+              <span class="metric-label">Comparaciones / Frame</span>
+              <span class="metric-value cyan" id="std-calc-val">0</span>
+            </div>
+            <div class="metric-card" style="grid-column: span 2;">
+              <span class="metric-label">Agentes Activos</span>
+              <span class="metric-value purple" id="std-agents-val">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">Ajustes Generales</div>
+          
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Número de Boids</span>
+              <span class="control-value">50</span>
+            </div>
+            <input type="range" class="boid-count-slider" data-sim="std" id="std-boids-slider" min="10" max="300" step="5" value="50">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Percepción (Radio)</span>
+              <span class="control-value">50</span>
+            </div>
+            <input type="range" id="std-rperc-slider" min="15" max="150" step="1" value="50">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Separación (Radio)</span>
+              <span class="control-value">25</span>
+            </div>
+            <input type="range" class="slider-separation" id="std-rsep-slider" min="5" max="80" step="1" value="25">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Velocidad Máxima</span>
+              <span class="control-value">4</span>
+            </div>
+            <input type="range" id="std-maxspeed-slider" min="1" max="10" step="0.5" value="4">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Fuerza Máxima</span>
+              <span class="control-value">0.15</span>
+            </div>
+            <input type="range" id="std-maxforce-slider" min="0.01" max="0.5" step="0.01" value="0.15">
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">Pesos de Reglas</div>
+          
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">
+                <span style="color: var(--accent-pink);">■</span> Separación (w_sep)
+              </span>
+              <span class="control-value">1.5</span>
+            </div>
+            <input type="range" class="slider-separation" id="std-wsep-slider" min="0" max="4" step="0.1" value="1.5">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">
+                <span style="color: var(--accent-cyan);">■</span> Alineación (w_ali)
+              </span>
+              <span class="control-value">1.0</span>
+            </div>
+            <input type="range" id="std-wali-slider" min="0" max="4" step="0.1" value="1.0">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">
+                <span style="color: #b666ff;">■</span> Cohesión (w_coh)
+              </span>
+              <span class="control-value">1.0</span>
+            </div>
+            <input type="range" id="std-wcoh-slider" min="0" max="4" step="0.1" value="1.0">
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">Visualización</div>
+          <label class="switch-container">
+            <span class="switch-label">Ver Radio (Hover en Agente)</span>
+            <input type="checkbox" class="switch-input" id="std-showperc-switch" checked>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- TAB 2: OPTIMIZED SIMULATION (SPATIAL HASHING) -->
+    <div class="tab-content" id="panel-optimized">
+      <div class="viewport-panel">
+        <div class="viewport-header">
+          <div class="viewport-title">
+            <span class="pulse-dot" style="background-color: var(--accent-green); box-shadow: 0 0 8px rgba(57, 255, 20, 0.4);"></span>
+            Optimización Spatial Hashing O(N)
+          </div>
+          <p class="info-banner-text">Mueve el mouse sobre la simulación para inspeccionar celdas y radios de percepción.</p>
+        </div>
+        <div class="canvas-container">
+          <canvas id="sim-opt-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="sidebar-panel">
+        <div class="sidebar-section">
+          <div class="section-title">Rendimiento O(N)</div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">FPS</span>
+              <span class="metric-value green" id="opt-fps-val">60</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Cálculo Física</span>
+              <span class="metric-value" id="opt-time-val">0.0 ms</span>
+            </div>
+            <div class="metric-card" style="grid-column: span 2;">
+              <span class="metric-label">Comparaciones / Frame</span>
+              <span class="metric-value cyan" id="opt-calc-val">0</span>
+            </div>
+            <div class="metric-card" style="grid-column: span 2;">
+              <span class="metric-label">Agentes Activos</span>
+              <span class="metric-value purple" id="opt-agents-val">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">Ajustes Generales (O(N))</div>
+          
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Número de Boids</span>
+              <span class="control-value">300</span>
+            </div>
+            <input type="range" class="boid-count-slider" data-sim="opt" id="opt-boids-slider" min="10" max="2000" step="10" value="300">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Percepción (Radio)</span>
+              <span class="control-value">50</span>
+            </div>
+            <input type="range" id="opt-rperc-slider" min="15" max="150" step="1" value="50">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Separación (Radio)</span>
+              <span class="control-value">25</span>
+            </div>
+            <input type="range" class="slider-separation" id="opt-rsep-slider" min="5" max="80" step="1" value="25">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Velocidad Máxima</span>
+              <span class="control-value">4</span>
+            </div>
+            <input type="range" id="opt-maxspeed-slider" min="1" max="10" step="0.5" value="4">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">Fuerza Máxima</span>
+              <span class="control-value">0.15</span>
+            </div>
+            <input type="range" id="opt-maxforce-slider" min="0.01" max="0.5" step="0.01" value="0.15">
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">Pesos de Reglas</div>
+          
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">
+                <span style="color: var(--accent-pink);">■</span> Separación (w_sep)
+              </span>
+              <span class="control-value">1.5</span>
+            </div>
+            <input type="range" class="slider-separation" id="opt-wsep-slider" min="0" max="4" step="0.1" value="1.5">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">
+                <span style="color: var(--accent-cyan);">■</span> Alineación (w_ali)
+              </span>
+              <span class="control-value">1.0</span>
+            </div>
+            <input type="range" id="opt-wali-slider" min="0" max="4" step="0.1" value="1.0">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <span class="control-name">
+                <span style="color: #b666ff;">■</span> Cohesión (w_coh)
+              </span>
+              <span class="control-value">1.0</span>
+            </div>
+            <input type="range" id="opt-wcoh-slider" min="0" max="4" step="0.1" value="1.0">
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">Visualización Spatial Hashing</div>
+          
+          <div class="control-group">
+            <label class="switch-container" style="margin-bottom: 0.8rem;">
+              <span class="switch-label">Mostrar Celdas del Grid</span>
+              <input type="checkbox" class="switch-input opt-switch" id="opt-showgrid-switch">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="control-group">
+            <label class="switch-container">
+              <span class="switch-label">Ver Radio (Hover en Agente)</span>
+              <input type="checkbox" class="switch-input" id="opt-showperc-switch" checked>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- TAB 3: COMPARATIVE SIDE-BY-SIDE VIEW -->
+    <div class="tab-content comparison-layout" id="panel-comparison">
+      
+      <!-- Global Controls for Comparison -->
+      <div class="comparison-controls-card">
+        <div>
+          <h2 style="font-size: 1.1rem; margin-bottom: 0.2rem;">Controles de Comparación</h2>
+          <p style="font-size: 0.8rem;">Modifica ambos entornos simultáneamente para comparar el rendimiento físico.</p>
+        </div>
+        <div class="comp-controls-group">
+          <div class="comp-slider-wrapper">
+            <div class="control-label-row">
+              <span class="control-name" style="font-size: 0.85rem;">Agentes (Ambos)</span>
+              <span class="control-value" id="comp-boids-val">150</span>
+            </div>
+            <input type="range" id="comp-boids-slider" min="20" max="1500" step="10" value="150">
+          </div>
+
+          <div class="comp-slider-wrapper">
+            <div class="control-label-row">
+              <span class="control-name" style="font-size: 0.85rem;">Radio Percepción</span>
+              <span class="control-value" id="comp-rperc-val">50</span>
+            </div>
+            <input type="range" id="comp-rperc-slider" min="15" max="120" step="1" value="50">
+          </div>
+
+          <!-- Hidden sliders to sync configurations uniformly with standard and optimized templates -->
+          <input type="hidden" id="comp-wsep-slider" value="1.5">
+          <input type="hidden" id="comp-wali-slider" value="1.0">
+          <input type="hidden" id="comp-wcoh-slider" value="1.0">
+          <input type="hidden" id="comp-rsep-slider" value="25">
+          <input type="hidden" id="comp-maxspeed-slider" value="4.0">
+          <input type="hidden" id="comp-maxforce-slider" value="0.15">
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <label class="switch-container" style="gap: 0.8rem;">
+            <span class="switch-label" style="font-size: 0.85rem;">Radio (Hover)</span>
+            <input type="checkbox" class="switch-input" id="comp-showperc-switch" checked>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Side-by-Side Canvas Grid -->
+      <div class="comparison-grid">
+        <!-- Brute force Standard -->
+        <div class="viewport-panel">
+          <div class="viewport-header" style="border-bottom-color: rgba(255, 0, 127, 0.15);">
+            <div class="viewport-title" style="color: var(--accent-pink);">
+              <span class="pulse-dot" style="background-color: var(--accent-pink); box-shadow: 0 0 8px var(--accent-pink-glow);"></span>
+              Estándar O(N²)
+            </div>
+            <div class="info-banner-text" style="color: var(--accent-pink);">Búsqueda por Fuerza Bruta</div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="sim-comp-std-canvas"></canvas>
+          </div>
+          <div class="comparison-stats-bar">
+            <div class="stat-item">
+              <span>FPS:</span>
+              <span id="comp-std-fps" style="color: var(--accent-pink);">0</span>
+            </div>
+            <div class="stat-item">
+              <span>Cálculo:</span>
+              <span id="comp-std-time">0 ms</span>
+            </div>
+            <div class="stat-item">
+              <span>Comparaciones:</span>
+              <span id="comp-std-calc" style="color: var(--accent-cyan);">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optimized Spatial Hashing -->
+        <div class="viewport-panel">
+          <div class="viewport-header" style="border-bottom-color: rgba(57, 255, 20, 0.15);">
+            <div class="viewport-title" style="color: var(--accent-green);">
+              <span class="pulse-dot" style="background-color: var(--accent-green); box-shadow: 0 0 8px rgba(57, 255, 20, 0.4);"></span>
+              Optimizado O(N)
+            </div>
+            <div class="info-banner-text" style="color: var(--accent-green);">Spatial Hash Grid</div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="sim-comp-opt-canvas"></canvas>
+          </div>
+          <div class="comparison-stats-bar">
+            <div class="stat-item">
+              <span>FPS:</span>
+              <span id="comp-opt-fps" style="color: var(--accent-green);">0</span>
+            </div>
+            <div class="stat-item">
+              <span>Cálculo:</span>
+              <span id="comp-opt-time">0 ms</span>
+            </div>
+            <div class="stat-item">
+              <span>Comparaciones:</span>
+              <span id="comp-opt-calc" style="color: var(--accent-cyan);">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparative Analysis Summary -->
+      <div class="comparison-report">
+        <h2 style="font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: var(--accent-cyan);">📊</span> Reporte de Optimización Analítica
+        </h2>
+        <div class="report-grid">
+          <div class="report-col">
+            <h3 class="std-title">Limitación O(N²)</h3>
+            <p style="font-size: 0.85rem; margin-bottom: 0.8rem;">
+              En el algoritmo de fuerza bruta, cada boid realiza una comprobación de distancia con todos los demás $N-1$ boids. 
+              Esto genera $N \times (N-1)$ operaciones por frame. A medida que $N$ aumenta, la carga del procesador escala de forma cuadrática.
+            </p>
+            <ul>
+              <li>
+                <span>Complejidad de Búsqueda</span>
+                <span>O(N²) Cuadrática</span>
+              </li>
+              <li>
+                <span>Límite de Fluidez (60 FPS)</span>
+                <span>~200 agentes</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div class="report-col">
+            <h3 class="opt-title">Beneficio O(N)</h3>
+            <p style="font-size: 0.85rem; margin-bottom: 0.8rem;">
+              Mediante la cuadrícula uniforme (Spatial Hashing), el plano bidimensional se subdivide en celdas de tamaño igual al radio de percepción. 
+              Cada boid solo realiza comparaciones con agentes en su propia celda y en las 8 celdas adyacentes.
+            </p>
+            <ul>
+              <li>
+                <span>Agentes Ejecutándose:</span>
+                <span id="comp-agent-count">0</span>
+              </li>
+              <li>
+                <span>Reducción de Operaciones:</span>
+                <span id="comp-opt-reduction" style="color: var(--accent-green); font-weight: bold;">0x menos</span>
+              </li>
+              <li>
+                <span>Límite de Fluidez (60 FPS):</span>
+                <span>2000+ agentes</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Application scripts -->
+  <script src="js/vector.js"></script>
+  <script src="js/spatial-hash.js"></script>
+  <script src="js/boid.js"></script>
+  <script src="js/simulation.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
